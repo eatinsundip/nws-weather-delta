@@ -24,6 +24,13 @@ def c_to_f(celsius: float) -> float:
     return celsius * 9.0 / 5.0 + 32.0
 
 
+def seasonal_target(day_of_year: int, target_min: float = 30.0,
+                    target_max: float = 75.0, trough_doy: int = 20) -> float:
+    mid = (target_min + target_max) / 2.0
+    amp = (target_max - target_min) / 2.0
+    return mid - amp * math.cos(2.0 * math.pi * (day_of_year - trough_doy) / 365.0)
+
+
 @dataclass
 class Location:
     name: str

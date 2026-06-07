@@ -17,5 +17,16 @@ class TestConvert(unittest.TestCase):
         self.assertAlmostEqual(wc.c_to_f(-40), -40.0)
 
 
+class TestSeasonalTarget(unittest.TestCase):
+    def test_trough_equals_min(self):
+        self.assertAlmostEqual(wc.seasonal_target(20, 30.0, 75.0, 20), 30.0, places=6)
+
+    def test_peak_near_max(self):
+        self.assertAlmostEqual(wc.seasonal_target(203, 30.0, 75.0, 20), 75.0, places=1)
+
+    def test_june_value(self):
+        self.assertAlmostEqual(wc.seasonal_target(158, 30.0, 75.0, 20), 68.8, delta=0.5)
+
+
 if __name__ == "__main__":
     unittest.main()
