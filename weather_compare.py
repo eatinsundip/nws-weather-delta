@@ -257,3 +257,47 @@ def local_day_bounds(tz_name: str, day: date) -> tuple[str, str]:
     start_local = datetime.combine(day, time(0, 0), tzinfo=tz)
     end_local = datetime.combine(day + timedelta(days=1), time(0, 0), tzinfo=tz)
     return _iso_z(start_local), _iso_z(end_local)
+
+
+ROW_FIELDS = [
+    "date", "target_f",
+    "a_high", "a_low", "a_humidity", "a_cloud", "a_conditions",
+    "b_high", "b_low", "b_humidity", "b_cloud", "b_conditions",
+    "temp_winner", "humidity_winner", "cloud_winner", "overall_winner",
+]
+
+
+def _round_or_blank(v: Optional[float]) -> str:
+    return "" if v is None else str(round(v, 1))
+
+
+def summary_row(recap_date: date, a: DailySummary, b: DailySummary,
+                fav: Favorability) -> dict:
+    return {
+        "date": recap_date.isoformat(),
+        "target_f": str(round(fav.target_f, 1)),
+        "a_high": _round_or_blank(a.high_f), "a_low": _round_or_blank(a.low_f),
+        "a_humidity": _round_or_blank(a.humidity_pct), "a_cloud": _round_or_blank(a.cloud_pct),
+        "a_conditions": a.conditions or "",
+        "b_high": _round_or_blank(b.high_f), "b_low": _round_or_blank(b.low_f),
+        "b_humidity": _round_or_blank(b.humidity_pct), "b_cloud": _round_or_blank(b.cloud_pct),
+        "b_conditions": b.conditions or "",
+        "temp_winner": fav.temp, "humidity_winner": fav.humidity,
+        "cloud_winner": fav.cloud, "overall_winner": fav.overall,
+    }
+
+
+def csv_upsert(path: str, row: dict) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    rows = []
+    if os.path.exists(path):
+        with open(path, newline="") as f:
+            rows = list(csv.DictReader(f))
+    rows = [r for r in rows if r.get("date") != row["date"]]
+    rows.append({k: str(row.get(k, "")) for k in ROW_FIELDS})
+    rows.sort(key=lambda r: r["date"])
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=ROW_FIELDS)
+        writer.writeheader()
+        for r in rows:
+            writer.writerow(r)

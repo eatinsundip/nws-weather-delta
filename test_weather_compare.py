@@ -1,6 +1,9 @@
+import os
+import tempfile
 import unittest
 import weather_compare as wc
 from datetime import date as _date
+from datetime import date as _date2
 
 
 class TestScaffold(unittest.TestCase):
@@ -228,6 +231,34 @@ class TestFavorability(unittest.TestCase):
         self.assertEqual(fav.humidity, "B")
         self.assertEqual(fav.cloud, "B")
         self.assertEqual(fav.overall, "B")
+
+
+class TestCsvUpsert(unittest.TestCase):
+    def _fav(self, overall):
+        return wc.Favorability("A", "B", "A", overall, 69.0)
+
+    def _summary(self):
+        return wc.DailySummary(78.0, 60.0, 55.0, 40.0, "Clear", 24)
+
+    def test_row_fields(self):
+        row = wc.summary_row(_date2(2026, 6, 6), self._summary(), self._summary(), self._fav("A"))
+        self.assertEqual(row["date"], "2026-06-06")
+        self.assertEqual(row["overall_winner"], "A")
+        self.assertEqual(set(row.keys()), set(wc.ROW_FIELDS))
+
+    def test_upsert_replaces_same_date(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "history.csv")
+            wc.csv_upsert(path, wc.summary_row(_date2(2026, 6, 6), self._summary(), self._summary(), self._fav("A")))
+            wc.csv_upsert(path, wc.summary_row(_date2(2026, 6, 7), self._summary(), self._summary(), self._fav("B")))
+            wc.csv_upsert(path, wc.summary_row(_date2(2026, 6, 6), self._summary(), self._summary(), self._fav("B")))
+            import csv as _csv
+            with open(path, newline="") as f:
+                rows = list(_csv.DictReader(f))
+            self.assertEqual(len(rows), 2)
+            by_date = {r["date"]: r for r in rows}
+            self.assertEqual(by_date["2026-06-06"]["overall_winner"], "B")
+            self.assertEqual(rows[0]["date"], "2026-06-06")
 
 
 if __name__ == "__main__":
