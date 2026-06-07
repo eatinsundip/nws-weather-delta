@@ -322,3 +322,51 @@ def read_scoreboard(path: str, year: int) -> Scoreboard:
                 ac += r["cloud_winner"] == "A"
                 bc += r["cloud_winner"] == "B"
     return Scoreboard(a, b, t, at, bt, ah, bh, ac, bc)
+
+
+GREEN = "\x1b[0;32m"
+RED = "\x1b[0;31m"
+RESET = "\x1b[0m"
+
+
+def _colorize(text: str, this_side: str, winner: str) -> str:
+    if winner == this_side:
+        return f"{GREEN}{text}{RESET}"
+    if winner in ("A", "B"):  # there is a winner and it's the other side
+        return f"{RED}{text}{RESET}"
+    return text  # tie or None -> no color
+
+
+def _val(v: Optional[float], unit: str) -> str:
+    return "n/a" if v is None else f"{v:.0f}{unit}"
+
+
+def build_ansi_table(loc_a: Location, loc_b: Location, a: DailySummary,
+                     b: DailySummary, fav: Favorability) -> str:
+    label_w, col_w = 12, 13
+
+    def row(label: str, a_text: str, b_text: str, delta: str,
+            winner: Optional[str]) -> str:
+        a_cell = _colorize(a_text.rjust(col_w), "A", winner)
+        b_cell = _colorize(b_text.rjust(col_w), "B", winner)
+        return f"{label.ljust(label_w)}{a_cell}{b_cell}   {delta}"
+
+    def diff(x, y, unit):
+        if x is None or y is None:
+            return ""
+        return f"Δ {abs(x - y):.0f}{unit}"
+
+    header = f"{''.ljust(label_w)}{loc_a.name.rjust(col_w)}{loc_b.name.rjust(col_w)}"
+    lines = [
+        header,
+        row("High", _val(a.high_f, "°F"), _val(b.high_f, "°F"),
+            diff(a.high_f, b.high_f, "°F"), fav.temp),
+        row("Low", _val(a.low_f, "°F"), _val(b.low_f, "°F"),
+            diff(a.low_f, b.low_f, "°F"), None),
+        row("Humidity", _val(a.humidity_pct, "%"), _val(b.humidity_pct, "%"),
+            diff(a.humidity_pct, b.humidity_pct, "%"), fav.humidity),
+        row("Cloud", _val(a.cloud_pct, "%"), _val(b.cloud_pct, "%"),
+            diff(a.cloud_pct, b.cloud_pct, "%"), fav.cloud),
+        row("Conditions", (a.conditions or "n/a"), (b.conditions or "n/a"), "", None),
+    ]
+    return "\n".join(lines)

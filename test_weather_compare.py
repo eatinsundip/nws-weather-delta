@@ -287,5 +287,31 @@ class TestScoreboard(unittest.TestCase):
         self.assertEqual(sb.b_wins, 0)
 
 
+class TestAnsiTable(unittest.TestCase):
+    def test_colors_favored_cells(self):
+        la = wc.Location("Des Moines", "KDSM", "America/Chicago")
+        lb = wc.Location("Providence", "KPVD", "America/New_York")
+        a = wc.DailySummary(78.0, 60.0, 55.0, 40.0, "Partly Cloudy", 24)
+        b = wc.DailySummary(71.0, 55.0, 68.0, 75.0, "Overcast", 24)
+        fav = wc.decide_favorability(a, b, 69.0, "high")  # temp B, humidity A, cloud A
+        table = wc.build_ansi_table(la, lb, a, b, fav)
+        self.assertIn(wc.GREEN, table)
+        self.assertIn(wc.RED, table)
+        self.assertIn(wc.RESET, table)
+        self.assertIn("78", table)
+        self.assertIn("71", table)
+        self.assertIn("Des Moines", table)
+        self.assertIn("Providence", table)
+
+    def test_handles_na(self):
+        la = wc.Location("A", "K1", "America/Chicago")
+        lb = wc.Location("B", "K2", "America/New_York")
+        a = wc.DailySummary(None, None, None, None, None, 0)
+        b = wc.DailySummary(None, None, None, None, None, 0)
+        fav = wc.decide_favorability(a, b, 60.0, "high")
+        table = wc.build_ansi_table(la, lb, a, b, fav)
+        self.assertIn("n/a", table)
+
+
 if __name__ == "__main__":
     unittest.main()
