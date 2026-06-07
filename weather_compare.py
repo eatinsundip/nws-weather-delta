@@ -144,6 +144,54 @@ def templated_summary(loc_a: Location, loc_b: Location, a: DailySummary,
     return lead
 
 
+def _fmt(v: Optional[float], unit: str) -> str:
+    return "n/a" if v is None else f"{v:.0f}{unit}"
+
+
+def build_ai_prompt(loc_a: Location, loc_b: Location, a: DailySummary,
+                    b: DailySummary, fav: Favorability) -> str:
+    def line(s: DailySummary) -> str:
+        return (f"high {_fmt(s.high_f, '°F')}, low {_fmt(s.low_f, '°F')}, "
+                f"humidity {_fmt(s.humidity_pct, '%')}, cloud cover {_fmt(s.cloud_pct, '%')}, "
+                f"conditions {s.conditions or 'n/a'}")
+    return (
+        "Write a brief, friendly 2-3 sentence comparison of yesterday's weather "
+        "between two cities. Be concrete and highlight the biggest differences. "
+        "No bullet points or headers.\n\n"
+        f"Seasonal comfort target: {fav.target_f:.0f}°F "
+        "(closer is better; lower humidity and less cloud are better).\n"
+        f"{loc_a.name}: {line(a)}\n"
+        f"{loc_b.name}: {line(b)}\n"
+    )
+
+
+def generate_summary(loc_a: Location, loc_b: Location, a: DailySummary,
+                     b: DailySummary, fav: Favorability, config: Config,
+                     post_json: Callable) -> str:
+    if not (config.ai_enabled and config.anthropic_api_key):
+        return templated_summary(loc_a, loc_b, a, b, fav)
+    try:
+        body = {
+            "model": config.ai_model,
+            "max_tokens": 200,
+            "messages": [{"role": "user",
+                          "content": build_ai_prompt(loc_a, loc_b, a, b, fav)}],
+        }
+        headers = {
+            "x-api-key": config.anthropic_api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+        resp = post_json("https://api.anthropic.com/v1/messages", headers, body)
+        text = resp["content"][0]["text"].strip()
+        if not text:
+            raise ValueError("empty AI response")
+        return text
+    except Exception as exc:  # noqa: BLE001 - any failure must fall back
+        log.warning("AI summary failed (%s); using templated fallback", exc)
+        return templated_summary(loc_a, loc_b, a, b, fav)
+
+
 def _iso_z(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 

@@ -99,6 +99,64 @@ class TestLocalDayBounds(unittest.TestCase):
         self.assertEqual(end, "2026-07-16T04:00:00Z")
 
 
+class TestGenerateSummary(unittest.TestCase):
+    def _cfg(self, ai_enabled=True, key="sk-test"):
+        la = wc.Location("Des Moines", "KDSM", "America/Chicago")
+        lb = wc.Location("Providence", "KPVD", "America/New_York")
+        return wc.Config(
+            webhook_url="http://hook", loc_a=la, loc_b=lb,
+            user_agent="ua", temp_basis="high", target_min=30.0, target_max=75.0,
+            trough_doy=20, ai_enabled=ai_enabled, anthropic_api_key=key,
+            ai_model="claude-haiku-4-5", data_dir="/tmp", recap_date=None,
+        )
+
+    def _summaries(self):
+        a = wc.DailySummary(78.0, 60.0, 55.0, 40.0, "Partly Cloudy", 24)
+        b = wc.DailySummary(71.0, 55.0, 68.0, 75.0, "Overcast", 24)
+        return a, b
+
+    def test_ai_success(self):
+        a, b = self._summaries()
+        fav = wc.decide_favorability(a, b, 69.0, "high")
+        captured = {}
+
+        def fake_post(url, headers, body):
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["body"] = body
+            return {"content": [{"text": "Iowa was warmer and drier than Rhode Island."}]}
+
+        cfg = self._cfg()
+        text = wc.generate_summary(cfg.loc_a, cfg.loc_b, a, b, fav, cfg, fake_post)
+        self.assertEqual(text, "Iowa was warmer and drier than Rhode Island.")
+        self.assertEqual(captured["url"], "https://api.anthropic.com/v1/messages")
+        self.assertEqual(captured["headers"]["x-api-key"], "sk-test")
+        self.assertEqual(captured["headers"]["anthropic-version"], "2023-06-01")
+        self.assertEqual(captured["body"]["model"], "claude-haiku-4-5")
+
+    def test_disabled_uses_templated_without_calling(self):
+        a, b = self._summaries()
+        fav = wc.decide_favorability(a, b, 69.0, "high")
+        cfg = self._cfg(ai_enabled=False)
+
+        def fake_post(url, headers, body):
+            raise AssertionError("post_json should not be called when AI disabled")
+
+        text = wc.generate_summary(cfg.loc_a, cfg.loc_b, a, b, fav, cfg, fake_post)
+        self.assertEqual(text, wc.templated_summary(cfg.loc_a, cfg.loc_b, a, b, fav))
+
+    def test_api_error_falls_back(self):
+        a, b = self._summaries()
+        fav = wc.decide_favorability(a, b, 69.0, "high")
+        cfg = self._cfg()
+
+        def fake_post(url, headers, body):
+            raise RuntimeError("boom")
+
+        text = wc.generate_summary(cfg.loc_a, cfg.loc_b, a, b, fav, cfg, fake_post)
+        self.assertEqual(text, wc.templated_summary(cfg.loc_a, cfg.loc_b, a, b, fav))
+
+
 class TestTemplatedSummary(unittest.TestCase):
     def test_mentions_diffs_and_winner(self):
         la = wc.Location("Des Moines", "KDSM", "America/Chicago")
