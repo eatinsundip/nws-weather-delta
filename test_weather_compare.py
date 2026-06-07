@@ -261,5 +261,32 @@ class TestCsvUpsert(unittest.TestCase):
             self.assertEqual(rows[0]["date"], "2026-06-06")
 
 
+class TestScoreboard(unittest.TestCase):
+    def _summary(self):
+        return wc.DailySummary(70.0, 50.0, 50.0, 50.0, "x", 24)
+
+    def test_counts_by_year(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "history.csv")
+            s = self._summary()
+            wc.csv_upsert(path, wc.summary_row(_date2(2026, 1, 2), s, s, wc.Favorability("A", "A", "B", "A", 30.0)))
+            wc.csv_upsert(path, wc.summary_row(_date2(2026, 1, 3), s, s, wc.Favorability("B", "B", "B", "B", 30.0)))
+            wc.csv_upsert(path, wc.summary_row(_date2(2025, 12, 31), s, s, wc.Favorability("A", "A", "A", "A", 30.0)))
+            sb = wc.read_scoreboard(path, 2026)
+            self.assertEqual(sb.a_wins, 1)
+            self.assertEqual(sb.b_wins, 1)
+            self.assertEqual(sb.a_temp, 1)
+            self.assertEqual(sb.b_temp, 1)
+            self.assertEqual(sb.a_humidity, 1)
+            self.assertEqual(sb.b_humidity, 1)
+            self.assertEqual(sb.b_cloud, 2)
+            self.assertEqual(sb.a_cloud, 0)
+
+    def test_missing_file_returns_zeros(self):
+        sb = wc.read_scoreboard("/tmp/does-not-exist-xyz.csv", 2026)
+        self.assertEqual(sb.a_wins, 0)
+        self.assertEqual(sb.b_wins, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

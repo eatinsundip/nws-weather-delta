@@ -301,3 +301,24 @@ def csv_upsert(path: str, row: dict) -> None:
         writer.writeheader()
         for r in rows:
             writer.writerow(r)
+
+
+def read_scoreboard(path: str, year: int) -> Scoreboard:
+    a = b = t = at = bt = ah = bh = ac = bc = 0
+    if os.path.exists(path):
+        prefix = f"{year}-"
+        with open(path, newline="") as f:
+            for r in csv.DictReader(f):
+                if not r.get("date", "").startswith(prefix):
+                    continue
+                w = r["overall_winner"]
+                a += w == "A"
+                b += w == "B"
+                t += w == "tie"
+                at += r["temp_winner"] == "A"
+                bt += r["temp_winner"] == "B"
+                ah += r["humidity_winner"] == "A"
+                bh += r["humidity_winner"] == "B"
+                ac += r["cloud_winner"] == "A"
+                bc += r["cloud_winner"] == "B"
+    return Scoreboard(a, b, t, at, bt, ah, bh, ac, bc)
