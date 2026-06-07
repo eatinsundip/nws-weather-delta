@@ -99,5 +99,54 @@ class TestLocalDayBounds(unittest.TestCase):
         self.assertEqual(end, "2026-07-16T04:00:00Z")
 
 
+class TestFavorability(unittest.TestCase):
+    def _s(self, high, low, hum, cloud):
+        return wc.DailySummary(high, low, hum, cloud, "x", 10)
+
+    def test_temp_closer_to_target_wins(self):
+        a = self._s(70.0, 50.0, 50.0, 50.0)
+        b = self._s(80.0, 60.0, 50.0, 50.0)
+        fav = wc.decide_favorability(a, b, 68.0, "high")
+        self.assertEqual(fav.temp, "A")
+
+    def test_lower_humidity_and_cloud_win(self):
+        a = self._s(70.0, 50.0, 40.0, 30.0)
+        b = self._s(70.0, 50.0, 60.0, 80.0)
+        fav = wc.decide_favorability(a, b, 70.0, "high")
+        self.assertEqual(fav.humidity, "A")
+        self.assertEqual(fav.cloud, "A")
+
+    def test_overall_majority_and_target_stored(self):
+        a = self._s(69.0, 50.0, 40.0, 90.0)
+        b = self._s(40.0, 30.0, 80.0, 10.0)
+        fav = wc.decide_favorability(a, b, 70.0, "high")
+        self.assertEqual(fav.overall, "A")
+        self.assertEqual(fav.target_f, 70.0)
+
+    def test_average_basis(self):
+        a = self._s(60.0, 40.0, 50.0, 50.0)
+        b = self._s(70.0, 66.0, 50.0, 50.0)
+        fav = wc.decide_favorability(a, b, 60.0, "average")
+        self.assertEqual(fav.temp, "B")
+
+    def test_ties(self):
+        a = self._s(70.0, 50.0, 50.0, 50.0)
+        b = self._s(70.0, 50.0, 50.0, 50.0)
+        fav = wc.decide_favorability(a, b, 60.0, "high")
+        self.assertEqual(fav.temp, "tie")
+        self.assertEqual(fav.humidity, "tie")
+        self.assertEqual(fav.cloud, "tie")
+        self.assertEqual(fav.overall, "tie")
+
+    def test_missing_value_favors_other(self):
+        a = self._s(None, None, None, None)
+        b = self._s(70.0, 50.0, 50.0, 50.0)
+        fav = wc.decide_favorability(a, b, 60.0, "high")
+        self.assertEqual(fav.temp, "B")
+        self.assertEqual(fav.humidity, "B")
+        self.assertEqual(fav.cloud, "B")
+        self.assertEqual(fav.overall, "B")
+
+
 if __name__ == "__main__":
     unittest.main()

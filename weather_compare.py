@@ -67,6 +67,54 @@ def summarize(observations: list) -> DailySummary:
     )
 
 
+def _basis_temp(s: DailySummary, temp_basis: str) -> Optional[float]:
+    if temp_basis == "average":
+        if s.high_f is None or s.low_f is None:
+            return None
+        return (s.high_f + s.low_f) / 2.0
+    return s.high_f
+
+
+def _closer(a_val, b_val, target) -> str:
+    if a_val is None and b_val is None:
+        return "tie"
+    if a_val is None:
+        return "B"
+    if b_val is None:
+        return "A"
+    da, db = abs(a_val - target), abs(b_val - target)
+    if da < db:
+        return "A"
+    if db < da:
+        return "B"
+    return "tie"
+
+
+def _lower(a_val, b_val) -> str:
+    if a_val is None and b_val is None:
+        return "tie"
+    if a_val is None:
+        return "B"
+    if b_val is None:
+        return "A"
+    if a_val < b_val:
+        return "A"
+    if b_val < a_val:
+        return "B"
+    return "tie"
+
+
+def decide_favorability(a: DailySummary, b: DailySummary, target_f: float,
+                        temp_basis: str = "high") -> Favorability:
+    temp = _closer(_basis_temp(a, temp_basis), _basis_temp(b, temp_basis), target_f)
+    humidity = _lower(a.humidity_pct, b.humidity_pct)
+    cloud = _lower(a.cloud_pct, b.cloud_pct)
+    a_pts = sum(1 for w in (temp, humidity, cloud) if w == "A")
+    b_pts = sum(1 for w in (temp, humidity, cloud) if w == "B")
+    overall = "A" if a_pts > b_pts else "B" if b_pts > a_pts else "tie"
+    return Favorability(temp, humidity, cloud, overall, target_f)
+
+
 def _iso_z(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
