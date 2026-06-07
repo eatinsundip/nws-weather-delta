@@ -31,6 +31,15 @@ def seasonal_target(day_of_year: int, target_min: float = 30.0,
     return mid - amp * math.cos(2.0 * math.pi * (day_of_year - trough_doy) / 365.0)
 
 
+CLOUD_PCT = {"SKC": 0.0, "CLR": 0.0, "FEW": 19.0, "SCT": 44.0, "BKN": 75.0, "OVC": 100.0}
+
+
+def cloud_amount_to_pct(code: Optional[str]) -> Optional[float]:
+    if code is None:
+        return None
+    return CLOUD_PCT.get(str(code).strip().upper())
+
+
 @dataclass
 class Location:
     name: str

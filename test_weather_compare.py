@@ -28,5 +28,20 @@ class TestSeasonalTarget(unittest.TestCase):
         self.assertAlmostEqual(wc.seasonal_target(158, 30.0, 75.0, 20), 68.8, delta=0.5)
 
 
+class TestCloudPct(unittest.TestCase):
+    def test_mapping(self):
+        self.assertEqual(wc.cloud_amount_to_pct("CLR"), 0.0)
+        self.assertEqual(wc.cloud_amount_to_pct("SKC"), 0.0)
+        self.assertEqual(wc.cloud_amount_to_pct("FEW"), 19.0)
+        self.assertEqual(wc.cloud_amount_to_pct("SCT"), 44.0)
+        self.assertEqual(wc.cloud_amount_to_pct("BKN"), 75.0)
+        self.assertEqual(wc.cloud_amount_to_pct("OVC"), 100.0)
+
+    def test_case_and_unknown(self):
+        self.assertEqual(wc.cloud_amount_to_pct("ovc"), 100.0)
+        self.assertIsNone(wc.cloud_amount_to_pct("XYZ"))
+        self.assertIsNone(wc.cloud_amount_to_pct(None))
+
+
 if __name__ == "__main__":
     unittest.main()
