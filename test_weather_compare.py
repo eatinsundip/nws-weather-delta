@@ -313,5 +313,34 @@ class TestAnsiTable(unittest.TestCase):
         self.assertIn("n/a", table)
 
 
+class TestEmbed(unittest.TestCase):
+    def test_structure_and_color(self):
+        la = wc.Location("Des Moines", "KDSM", "America/Chicago")
+        lb = wc.Location("Providence", "KPVD", "America/New_York")
+        a = wc.DailySummary(78.0, 60.0, 55.0, 40.0, "Partly Cloudy", 24)
+        b = wc.DailySummary(71.0, 55.0, 68.0, 75.0, "Overcast", 24)
+        fav = wc.Favorability("B", "A", "A", "A", 69.0)  # overall A
+        sb = wc.Scoreboard(98, 112, 3, 50, 60, 70, 40, 55, 56)
+        embed = wc.build_embed(la, lb, a, b, fav, "Summary text.", sb, _date(2026, 6, 6))
+        e = embed["embeds"][0]
+        self.assertEqual(e["color"], wc.COLOR_A)  # overall A -> orange
+        self.assertIn("Weather Comparison", e["title"])
+        self.assertIn("2026", e["title"])
+        self.assertIn("```ansi", e["description"])
+        self.assertIn("Summary text.", e["description"])
+        self.assertIn("YTD", e["description"])
+        self.assertIn("Providence 112", e["description"])
+
+    def test_color_b_and_tie(self):
+        la = wc.Location("A", "K1", "America/Chicago")
+        lb = wc.Location("B", "K2", "America/New_York")
+        s = wc.DailySummary(70.0, 50.0, 50.0, 50.0, "x", 1)
+        sb = wc.Scoreboard(0, 0, 0, 0, 0, 0, 0, 0, 0)
+        e_b = wc.build_embed(la, lb, s, s, wc.Favorability("B", "B", "B", "B", 60.0), "t", sb, _date(2026, 6, 6))
+        self.assertEqual(e_b["embeds"][0]["color"], wc.COLOR_B)
+        e_t = wc.build_embed(la, lb, s, s, wc.Favorability("tie", "tie", "tie", "tie", 60.0), "t", sb, _date(2026, 6, 6))
+        self.assertEqual(e_t["embeds"][0]["color"], wc.COLOR_TIE)
+
+
 if __name__ == "__main__":
     unittest.main()

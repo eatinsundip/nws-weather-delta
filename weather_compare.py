@@ -370,3 +370,27 @@ def build_ansi_table(loc_a: Location, loc_b: Location, a: DailySummary,
         row("Conditions", (a.conditions or "n/a"), (b.conditions or "n/a"), "", None),
     ]
     return "\n".join(lines)
+
+
+COLOR_A = 0xE67E22    # orange  (city A / Des Moines wins)
+COLOR_B = 0x2ECC71    # green   (city B / Providence wins)
+COLOR_TIE = 0x95A5A6  # gray    (tie)
+
+
+def build_embed(loc_a: Location, loc_b: Location, a: DailySummary, b: DailySummary,
+                fav: Favorability, summary_text: str, sb: Scoreboard,
+                recap_date: date) -> dict:
+    table = build_ansi_table(loc_a, loc_b, a, b, fav)
+    color = COLOR_B if fav.overall == "B" else COLOR_A if fav.overall == "A" else COLOR_TIE
+    pretty = recap_date.strftime("%a, %b %-d %Y")
+    score = (
+        f"YTD: {loc_b.name} {sb.b_wins} – {sb.a_wins} {loc_a.name}  "
+        f"(Temp {sb.b_temp}-{sb.a_temp} · Humidity {sb.b_humidity}-{sb.a_humidity} "
+        f"· Cloud {sb.b_cloud}-{sb.a_cloud})"
+    )
+    description = f"```ansi\n{table}\n```\n{summary_text}\n\n{score}"
+    return {"embeds": [{
+        "title": f"\U0001F324️  Weather Comparison — {pretty}",
+        "color": color,
+        "description": description,
+    }]}
