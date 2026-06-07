@@ -99,6 +99,30 @@ class TestLocalDayBounds(unittest.TestCase):
         self.assertEqual(end, "2026-07-16T04:00:00Z")
 
 
+class TestTemplatedSummary(unittest.TestCase):
+    def test_mentions_diffs_and_winner(self):
+        la = wc.Location("Des Moines", "KDSM", "America/Chicago")
+        lb = wc.Location("Providence", "KPVD", "America/New_York")
+        a = wc.DailySummary(78.0, 60.0, 55.0, 40.0, "Partly Cloudy", 24)
+        b = wc.DailySummary(71.0, 55.0, 68.0, 75.0, "Overcast", 24)
+        fav = wc.decide_favorability(a, b, 69.0, "high")
+        text = wc.templated_summary(la, lb, a, b, fav)
+        self.assertIn("Des Moines", text)
+        self.assertIn("7", text)
+        self.assertIn("less humid", text)
+        self.assertIn("Overall", text)
+
+    def test_handles_missing_values(self):
+        la = wc.Location("A", "K1", "America/Chicago")
+        lb = wc.Location("B", "K2", "America/New_York")
+        a = wc.DailySummary(None, None, None, None, None, 0)
+        b = wc.DailySummary(None, None, None, None, None, 0)
+        fav = wc.decide_favorability(a, b, 60.0, "high")
+        text = wc.templated_summary(la, lb, a, b, fav)
+        self.assertIsInstance(text, str)
+        self.assertTrue(len(text) > 0)
+
+
 class TestFavorability(unittest.TestCase):
     def _s(self, high, low, hum, cloud):
         return wc.DailySummary(high, low, hum, cloud, "x", 10)

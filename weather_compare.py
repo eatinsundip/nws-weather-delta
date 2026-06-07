@@ -115,6 +115,35 @@ def decide_favorability(a: DailySummary, b: DailySummary, target_f: float,
     return Favorability(temp, humidity, cloud, overall, target_f)
 
 
+def templated_summary(loc_a: Location, loc_b: Location, a: DailySummary,
+                      b: DailySummary, fav: Favorability) -> str:
+    parts = []
+    if a.high_f is not None and b.high_f is not None and a.high_f != b.high_f:
+        warmer = loc_a.name if a.high_f > b.high_f else loc_b.name
+        closer = loc_a.name if fav.temp == "A" else loc_b.name if fav.temp == "B" else "neither"
+        parts.append(
+            f"{warmer} was {abs(a.high_f - b.high_f):.0f}°F warmer "
+            f"(closer to the ~{fav.target_f:.0f}°F seasonal target: {closer})"
+        )
+    if a.humidity_pct is not None and b.humidity_pct is not None and a.humidity_pct != b.humidity_pct:
+        drier = loc_a.name if a.humidity_pct < b.humidity_pct else loc_b.name
+        parts.append(f"{drier} was {abs(a.humidity_pct - b.humidity_pct):.0f}% less humid")
+    if a.cloud_pct is not None and b.cloud_pct is not None and a.cloud_pct != b.cloud_pct:
+        clearer = loc_a.name if a.cloud_pct < b.cloud_pct else loc_b.name
+        parts.append(f"{clearer} was clearer (by {abs(a.cloud_pct - b.cloud_pct):.0f}%)")
+    if parts:
+        lead = "Yesterday " + "; ".join(parts) + "."
+    else:
+        lead = "Yesterday's conditions were similar between the two cities."
+    if fav.overall == "A":
+        lead += f" Overall, {loc_a.name} had the more favorable day."
+    elif fav.overall == "B":
+        lead += f" Overall, {loc_b.name} had the more favorable day."
+    else:
+        lead += " Overall, it was a wash."
+    return lead
+
+
 def _iso_z(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
