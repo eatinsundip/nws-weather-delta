@@ -20,6 +20,10 @@ from zoneinfo import ZoneInfo
 log = logging.getLogger("weather_compare")
 
 
+def c_to_f(celsius: float) -> float:
+    return celsius * 9.0 / 5.0 + 32.0
+
+
 @dataclass
 class Location:
     name: str
