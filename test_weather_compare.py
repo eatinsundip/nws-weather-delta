@@ -1,5 +1,6 @@
 import unittest
 import weather_compare as wc
+from datetime import date as _date
 
 
 class TestScaffold(unittest.TestCase):
@@ -84,6 +85,18 @@ class TestSummarize(unittest.TestCase):
         self.assertIsNone(s.cloud_pct)
         self.assertIsNone(s.conditions)
         self.assertEqual(s.sample_count, 1)
+
+
+class TestLocalDayBounds(unittest.TestCase):
+    def test_winter_central(self):
+        start, end = wc.local_day_bounds("America/Chicago", _date(2026, 1, 15))
+        self.assertEqual(start, "2026-01-15T06:00:00Z")
+        self.assertEqual(end, "2026-01-16T06:00:00Z")
+
+    def test_summer_eastern(self):
+        start, end = wc.local_day_bounds("America/New_York", _date(2026, 7, 15))
+        self.assertEqual(start, "2026-07-15T04:00:00Z")
+        self.assertEqual(end, "2026-07-16T04:00:00Z")
 
 
 if __name__ == "__main__":

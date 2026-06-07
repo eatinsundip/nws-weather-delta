@@ -67,6 +67,17 @@ def summarize(observations: list) -> DailySummary:
     )
 
 
+def _iso_z(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def local_day_bounds(tz_name: str, day: date) -> tuple:
+    tz = ZoneInfo(tz_name)
+    start_local = datetime.combine(day, time(0, 0), tzinfo=tz)
+    end_local = datetime.combine(day + timedelta(days=1), time(0, 0), tzinfo=tz)
+    return _iso_z(start_local), _iso_z(end_local)
+
+
 @dataclass
 class Location:
     name: str
