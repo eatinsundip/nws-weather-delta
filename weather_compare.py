@@ -51,7 +51,7 @@ def summarize(observations: list) -> DailySummary:
             hums.append(h)
         layers = obs.get("cloudLayers")
         if layers is not None:
-            pcts = [cloud_amount_to_pct(l.get("amount")) for l in layers]
+            pcts = [cloud_amount_to_pct(layer.get("amount")) for layer in layers]
             pcts = [p for p in pcts if p is not None]
             clouds.append(max(pcts) if pcts else 0.0)
         desc = obs.get("textDescription")
@@ -71,7 +71,7 @@ def _iso_z(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def local_day_bounds(tz_name: str, day: date) -> tuple:
+def local_day_bounds(tz_name: str, day: date) -> tuple[str, str]:
     tz = ZoneInfo(tz_name)
     start_local = datetime.combine(day, time(0, 0), tzinfo=tz)
     end_local = datetime.combine(day + timedelta(days=1), time(0, 0), tzinfo=tz)
