@@ -3,7 +3,6 @@ import tempfile
 import unittest
 import weather_compare as wc
 from datetime import date as _date
-from datetime import date as _date2
 
 
 class TestScaffold(unittest.TestCase):
@@ -241,7 +240,7 @@ class TestCsvUpsert(unittest.TestCase):
         return wc.DailySummary(78.0, 60.0, 55.0, 40.0, "Clear", 24)
 
     def test_row_fields(self):
-        row = wc.summary_row(_date2(2026, 6, 6), self._summary(), self._summary(), self._fav("A"))
+        row = wc.summary_row(_date(2026, 6, 6), self._summary(), self._summary(), self._fav("A"))
         self.assertEqual(row["date"], "2026-06-06")
         self.assertEqual(row["overall_winner"], "A")
         self.assertEqual(set(row.keys()), set(wc.ROW_FIELDS))
@@ -249,9 +248,9 @@ class TestCsvUpsert(unittest.TestCase):
     def test_upsert_replaces_same_date(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "history.csv")
-            wc.csv_upsert(path, wc.summary_row(_date2(2026, 6, 6), self._summary(), self._summary(), self._fav("A")))
-            wc.csv_upsert(path, wc.summary_row(_date2(2026, 6, 7), self._summary(), self._summary(), self._fav("B")))
-            wc.csv_upsert(path, wc.summary_row(_date2(2026, 6, 6), self._summary(), self._summary(), self._fav("B")))
+            wc.csv_upsert(path, wc.summary_row(_date(2026, 6, 6), self._summary(), self._summary(), self._fav("A")))
+            wc.csv_upsert(path, wc.summary_row(_date(2026, 6, 7), self._summary(), self._summary(), self._fav("B")))
+            wc.csv_upsert(path, wc.summary_row(_date(2026, 6, 6), self._summary(), self._summary(), self._fav("B")))
             import csv as _csv
             with open(path, newline="") as f:
                 rows = list(_csv.DictReader(f))
@@ -269,9 +268,9 @@ class TestScoreboard(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "history.csv")
             s = self._summary()
-            wc.csv_upsert(path, wc.summary_row(_date2(2026, 1, 2), s, s, wc.Favorability("A", "A", "B", "A", 30.0)))
-            wc.csv_upsert(path, wc.summary_row(_date2(2026, 1, 3), s, s, wc.Favorability("B", "B", "B", "B", 30.0)))
-            wc.csv_upsert(path, wc.summary_row(_date2(2025, 12, 31), s, s, wc.Favorability("A", "A", "A", "A", 30.0)))
+            wc.csv_upsert(path, wc.summary_row(_date(2026, 1, 2), s, s, wc.Favorability("A", "A", "B", "A", 30.0)))
+            wc.csv_upsert(path, wc.summary_row(_date(2026, 1, 3), s, s, wc.Favorability("B", "B", "B", "B", 30.0)))
+            wc.csv_upsert(path, wc.summary_row(_date(2025, 12, 31), s, s, wc.Favorability("A", "A", "A", "A", 30.0)))
             sb = wc.read_scoreboard(path, 2026)
             self.assertEqual(sb.a_wins, 1)
             self.assertEqual(sb.b_wins, 1)
