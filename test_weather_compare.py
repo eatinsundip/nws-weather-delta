@@ -166,7 +166,7 @@ class TestTemplatedSummary(unittest.TestCase):
         fav = wc.decide_favorability(a, b, 69.0, "high")
         text = wc.templated_summary(la, lb, a, b, fav)
         self.assertIn("Des Moines", text)
-        self.assertIn("7", text)
+        self.assertIn("7°F", text)
         self.assertIn("less humid", text)
         self.assertIn("Overall", text)
 
