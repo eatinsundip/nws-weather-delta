@@ -40,6 +40,33 @@ def cloud_amount_to_pct(code: Optional[str]) -> Optional[float]:
     return CLOUD_PCT.get(str(code).strip().upper())
 
 
+def summarize(observations: list) -> DailySummary:
+    temps_c, hums, clouds, conditions = [], [], [], []
+    for obs in observations:
+        t = (obs.get("temperature") or {}).get("value")
+        if t is not None:
+            temps_c.append(t)
+        h = (obs.get("relativeHumidity") or {}).get("value")
+        if h is not None:
+            hums.append(h)
+        layers = obs.get("cloudLayers")
+        if layers is not None:
+            pcts = [cloud_amount_to_pct(l.get("amount")) for l in layers]
+            pcts = [p for p in pcts if p is not None]
+            clouds.append(max(pcts) if pcts else 0.0)
+        desc = obs.get("textDescription")
+        if desc:
+            conditions.append(desc)
+    return DailySummary(
+        high_f=c_to_f(max(temps_c)) if temps_c else None,
+        low_f=c_to_f(min(temps_c)) if temps_c else None,
+        humidity_pct=mean(hums) if hums else None,
+        cloud_pct=mean(clouds) if clouds else None,
+        conditions=Counter(conditions).most_common(1)[0][0] if conditions else None,
+        sample_count=len(observations),
+    )
+
+
 @dataclass
 class Location:
     name: str

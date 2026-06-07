@@ -43,5 +43,48 @@ class TestCloudPct(unittest.TestCase):
         self.assertIsNone(wc.cloud_amount_to_pct(None))
 
 
+class TestSummarize(unittest.TestCase):
+    def _obs(self, c, h, layers, desc):
+        return {
+            "temperature": {"value": c},
+            "relativeHumidity": {"value": h},
+            "cloudLayers": layers,
+            "textDescription": desc,
+        }
+
+    def test_basic_aggregation(self):
+        obs = [
+            self._obs(20.0, 50.0, [{"amount": "FEW"}], "Mostly Clear"),
+            self._obs(25.0, 60.0, [{"amount": "OVC"}], "Cloudy"),
+            self._obs(10.0, 70.0, [], "Clear"),
+        ]
+        s = wc.summarize(obs)
+        self.assertAlmostEqual(s.high_f, wc.c_to_f(25.0))
+        self.assertAlmostEqual(s.low_f, wc.c_to_f(10.0))
+        self.assertAlmostEqual(s.humidity_pct, 60.0)
+        self.assertAlmostEqual(s.cloud_pct, (19.0 + 100.0 + 0.0) / 3.0)
+        self.assertEqual(s.sample_count, 3)
+
+    def test_most_common_conditions(self):
+        obs = [
+            self._obs(1.0, 1.0, [], "Rain"),
+            self._obs(1.0, 1.0, [], "Rain"),
+            self._obs(1.0, 1.0, [], "Clear"),
+        ]
+        self.assertEqual(wc.summarize(obs).conditions, "Rain")
+
+    def test_nulls_skipped(self):
+        obs = [
+            {"temperature": {"value": None}, "relativeHumidity": {"value": None},
+             "cloudLayers": None, "textDescription": None},
+        ]
+        s = wc.summarize(obs)
+        self.assertIsNone(s.high_f)
+        self.assertIsNone(s.humidity_pct)
+        self.assertIsNone(s.cloud_pct)
+        self.assertIsNone(s.conditions)
+        self.assertEqual(s.sample_count, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
