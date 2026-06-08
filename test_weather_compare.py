@@ -1,3 +1,4 @@
+import csv
 import os
 import tempfile
 import unittest
@@ -503,8 +504,10 @@ class TestRun(unittest.TestCase):
             cfg = wc.load_config({"DISCORD_WEBHOOK_URL": "http://hook", "DATA_DIR": d,
                                   "AI_ENABLED": "false"})
             posts = []
+            seen_urls = []
 
             def fake_get(url, headers):
+                seen_urls.append(url)
                 return self._collection()
 
             def fake_post(url, headers, body):
@@ -516,9 +519,11 @@ class TestRun(unittest.TestCase):
             self.assertIn("Jun 6 2026", embed["embeds"][0]["title"])
             self.assertEqual(len(posts), 1)
             self.assertEqual(posts[0][0], "http://hook")
-            import csv as _csv
+            # both cities fetched from their own station (guards against transposition)
+            self.assertTrue(any("KDSM" in u for u in seen_urls))
+            self.assertTrue(any("KPVD" in u for u in seen_urls))
             with open(os.path.join(d, "history.csv"), newline="") as f:
-                rows = list(_csv.DictReader(f))
+                rows = list(csv.DictReader(f))
             self.assertEqual(rows[0]["date"], "2026-06-06")
 
 
