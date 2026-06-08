@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+import urllib.error
 import weather_compare as wc
 from datetime import date as _date
 
@@ -365,6 +366,51 @@ class TestEmbed(unittest.TestCase):
         self.assertEqual(e_b["embeds"][0]["color"], wc.COLOR_B)
         e_t = wc.build_embed(la, lb, s, s, wc.Favorability("tie", "tie", "tie", "tie", 60.0), "t", sb, _date(2026, 6, 6))
         self.assertEqual(e_t["embeds"][0]["color"], wc.COLOR_TIE)
+
+
+class _FakeResp:
+    def __init__(self, body):
+        self._body = body.encode()
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class TestHttp(unittest.TestCase):
+    def test_retries_then_succeeds(self):
+        calls = {"n": 0}
+
+        def fake_urlopen(req, timeout=None):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise urllib.error.URLError("temporary")
+            return _FakeResp('{"ok": true}')
+
+        out = wc.http_request_json(
+            "http://x", {"User-Agent": "ua"}, urlopen=fake_urlopen, sleep=lambda *_: None
+        )
+        self.assertEqual(out, {"ok": True})
+        self.assertEqual(calls["n"], 3)
+
+    def test_client_error_no_retry(self):
+        def fake_urlopen(req, timeout=None):
+            raise urllib.error.HTTPError("http://x", 404, "nf", {}, None)
+
+        with self.assertRaises(urllib.error.HTTPError):
+            wc.http_request_json("http://x", {}, urlopen=fake_urlopen, sleep=lambda *_: None)
+
+    def test_empty_body_returns_none(self):
+        def fake_urlopen(req, timeout=None):
+            return _FakeResp("")
+
+        out = wc.http_request_json("http://x", {}, urlopen=fake_urlopen, sleep=lambda *_: None)
+        self.assertIsNone(out)
 
 
 if __name__ == "__main__":

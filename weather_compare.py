@@ -394,3 +394,34 @@ def build_embed(loc_a: Location, loc_b: Location, a: DailySummary, b: DailySumma
         "color": color,
         "description": description,
     }]}
+
+
+def http_request_json(url: str, headers: dict, data: Optional[dict] = None,
+                      method: str = "GET", timeout: float = 15.0, retries: int = 3,
+                      backoff: float = 2.0, urlopen=urllib.request.urlopen,
+                      sleep=_time.sleep):
+    body = json.dumps(data).encode() if data is not None else None
+    last_exc = None
+    for attempt in range(retries):
+        req = urllib.request.Request(url, data=body, headers=headers, method=method)
+        try:
+            with urlopen(req, timeout=timeout) as resp:
+                raw = resp.read().decode().strip()
+                return json.loads(raw) if raw else None
+        except urllib.error.HTTPError as exc:
+            if exc.code < 500:
+                raise
+            last_exc = exc
+        except urllib.error.URLError as exc:
+            last_exc = exc
+        if attempt < retries - 1:
+            sleep(backoff * (attempt + 1))
+    raise last_exc
+
+
+def http_get_json(url: str, headers: dict, **kw):
+    return http_request_json(url, headers, method="GET", **kw)
+
+
+def http_post_json(url: str, headers: dict, body: dict, **kw):
+    return http_request_json(url, headers, data=body, method="POST", **kw)
