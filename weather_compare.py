@@ -425,3 +425,18 @@ def http_get_json(url: str, headers: dict, **kw):
 
 def http_post_json(url: str, headers: dict, body: dict, **kw):
     return http_request_json(url, headers, data=body, method="POST", **kw)
+
+
+def fetch_observations(station: str, start_iso: str, end_iso: str,
+                       user_agent: str, get_json: Callable = http_get_json) -> list:
+    url = (f"https://api.weather.gov/stations/{station}/observations"
+           f"?start={start_iso}&end={end_iso}")
+    headers = {"User-Agent": user_agent, "Accept": "application/geo+json"}
+    data = get_json(url, headers)
+    features = (data or {}).get("features", [])
+    return [f["properties"] for f in features]
+
+
+def post_discord(webhook_url: str, payload: dict,
+                 post_json: Callable = http_post_json) -> None:
+    post_json(webhook_url, {"content-type": "application/json"}, payload)

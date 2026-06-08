@@ -413,5 +413,38 @@ class TestHttp(unittest.TestCase):
         self.assertIsNone(out)
 
 
+class TestNetworkWrappers(unittest.TestCase):
+    def test_fetch_observations_parses_features(self):
+        captured = {}
+
+        def fake_get(url, headers):
+            captured["url"] = url
+            captured["headers"] = headers
+            return {"features": [
+                {"properties": {"temperature": {"value": 20.0}}},
+                {"properties": {"temperature": {"value": 21.0}}},
+            ]}
+
+        props = wc.fetch_observations("KDSM", "2026-06-06T05:00:00Z",
+                                      "2026-06-07T05:00:00Z", "ua", get_json=fake_get)
+        self.assertEqual(len(props), 2)
+        self.assertEqual(props[0]["temperature"]["value"], 20.0)
+        self.assertIn("/stations/KDSM/observations", captured["url"])
+        self.assertIn("start=2026-06-06T05:00:00Z", captured["url"])
+        self.assertEqual(captured["headers"]["User-Agent"], "ua")
+
+    def test_post_discord_calls_transport(self):
+        captured = {}
+
+        def fake_post(url, headers, body):
+            captured["url"] = url
+            captured["body"] = body
+            return None
+
+        wc.post_discord("http://hook", {"embeds": []}, post_json=fake_post)
+        self.assertEqual(captured["url"], "http://hook")
+        self.assertEqual(captured["body"], {"embeds": []})
+
+
 if __name__ == "__main__":
     unittest.main()
