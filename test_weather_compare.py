@@ -485,5 +485,42 @@ class TestLoadConfig(unittest.TestCase):
         self.assertEqual(cfg.recap_date, "2026-06-06")
 
 
+class TestRun(unittest.TestCase):
+    def _collection(self):
+        return {"features": [
+            {"properties": {"temperature": {"value": 20.0},
+                            "relativeHumidity": {"value": 50.0},
+                            "cloudLayers": [{"amount": "FEW"}],
+                            "textDescription": "Mostly Clear"}},
+            {"properties": {"temperature": {"value": 25.0},
+                            "relativeHumidity": {"value": 60.0},
+                            "cloudLayers": [{"amount": "OVC"}],
+                            "textDescription": "Cloudy"}},
+        ]}
+
+    def test_run_posts_embed_and_writes_csv(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = wc.load_config({"DISCORD_WEBHOOK_URL": "http://hook", "DATA_DIR": d,
+                                  "AI_ENABLED": "false"})
+            posts = []
+
+            def fake_get(url, headers):
+                return self._collection()
+
+            def fake_post(url, headers, body):
+                posts.append((url, body))
+                return None
+
+            embed = wc.run(cfg, _date(2026, 6, 7), get_json=fake_get, post_json=fake_post)
+            # recap date is yesterday = 2026-06-06
+            self.assertIn("Jun 6 2026", embed["embeds"][0]["title"])
+            self.assertEqual(len(posts), 1)
+            self.assertEqual(posts[0][0], "http://hook")
+            import csv as _csv
+            with open(os.path.join(d, "history.csv"), newline="") as f:
+                rows = list(_csv.DictReader(f))
+            self.assertEqual(rows[0]["date"], "2026-06-06")
+
+
 if __name__ == "__main__":
     unittest.main()

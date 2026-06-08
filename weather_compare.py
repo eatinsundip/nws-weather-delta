@@ -475,3 +475,51 @@ def load_config(env: dict) -> Config:
         data_dir=env.get("DATA_DIR", "./data"),
         recap_date=env.get("RECAP_DATE"),
     )
+
+
+def run(config: Config, today: date, get_json: Callable = http_get_json,
+        post_json: Callable = http_post_json) -> dict:
+    if config.recap_date:
+        recap = date.fromisoformat(config.recap_date)
+    else:
+        recap = today - timedelta(days=1)
+
+    summaries = {}
+    for key, loc in (("A", config.loc_a), ("B", config.loc_b)):
+        start, end = local_day_bounds(loc.tz, recap)
+        obs = fetch_observations(loc.station, start, end, config.user_agent,
+                                 get_json=get_json)
+        summaries[key] = summarize(obs)
+    a, b = summaries["A"], summaries["B"]
+
+    target = seasonal_target(recap.timetuple().tm_yday, config.target_min,
+                             config.target_max, config.trough_doy)
+    fav = decide_favorability(a, b, target, config.temp_basis)
+    summary_text = generate_summary(config.loc_a, config.loc_b, a, b, fav,
+                                    config, post_json)
+
+    csv_path = os.path.join(config.data_dir, "history.csv")
+    csv_upsert(csv_path, summary_row(recap, a, b, fav))
+    sb = read_scoreboard(csv_path, recap.year)
+
+    embed = build_embed(config.loc_a, config.loc_b, a, b, fav, summary_text, sb, recap)
+    post_discord(config.webhook_url, embed, post_json=post_json)
+    log.info("Posted weather comparison for %s (overall winner: %s)",
+             recap.isoformat(), fav.overall)
+    return embed
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s %(levelname)s %(message)s")
+    config = load_config(os.environ)
+    today = datetime.now(ZoneInfo(config.loc_a.tz)).date()
+    try:
+        run(config, today)
+    except Exception:
+        log.exception("weather_compare run failed")
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()
