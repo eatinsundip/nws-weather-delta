@@ -347,8 +347,8 @@ def build_ansi_table(loc_a: Location, loc_b: Location, a: DailySummary,
 
     def row(label: str, a_text: str, b_text: str, delta: str,
             winner: Optional[str]) -> str:
-        a_cell = _colorize(a_text.rjust(col_w), "A", winner)
-        b_cell = _colorize(b_text.rjust(col_w), "B", winner)
+        a_cell = _colorize(a_text[:col_w].rjust(col_w), "A", winner)
+        b_cell = _colorize(b_text[:col_w].rjust(col_w), "B", winner)
         return f"{label.ljust(label_w)}{a_cell}{b_cell}   {delta}"
 
     def diff(x, y, unit):
@@ -356,7 +356,7 @@ def build_ansi_table(loc_a: Location, loc_b: Location, a: DailySummary,
             return ""
         return f"Δ {abs(x - y):.0f}{unit}"
 
-    header = f"{''.ljust(label_w)}{loc_a.name.rjust(col_w)}{loc_b.name.rjust(col_w)}"
+    header = f"{''.ljust(label_w)}{loc_a.name[:col_w].rjust(col_w)}{loc_b.name[:col_w].rjust(col_w)}"
     lines = [
         header,
         row("High", _val(a.high_f, "°F"), _val(b.high_f, "°F"),

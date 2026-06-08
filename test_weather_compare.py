@@ -303,6 +303,31 @@ class TestAnsiTable(unittest.TestCase):
         self.assertIn("Des Moines", table)
         self.assertIn("Providence", table)
 
+    def test_favored_cell_green_loser_red(self):
+        # Pin which cell gets which color (guards against A/B transposition).
+        la = wc.Location("Des Moines", "KDSM", "America/Chicago")
+        lb = wc.Location("Providence", "KPVD", "America/New_York")
+        a = wc.DailySummary(78.0, 60.0, 55.0, 40.0, "Partly Cloudy", 24)
+        b = wc.DailySummary(71.0, 55.0, 68.0, 75.0, "Overcast", 24)
+        fav = wc.decide_favorability(a, b, 69.0, "high")  # 71 is closer to 69 -> temp favors B
+        self.assertEqual(fav.temp, "B")
+        high_row = wc.build_ansi_table(la, lb, a, b, fav).split("\n")[1]
+        # A (Des Moines, lost temp) is red and appears before B (Providence, won temp) in green
+        self.assertLess(high_row.index(wc.RED), high_row.index(wc.GREEN))
+        red_seg = high_row[high_row.index(wc.RED):high_row.index(wc.GREEN)]
+        green_seg = high_row[high_row.index(wc.GREEN):]
+        self.assertIn("78", red_seg)
+        self.assertIn("71", green_seg)
+
+    def test_long_conditions_truncated_to_column(self):
+        # Long NWS condition strings must not overflow the 13-char column.
+        la = wc.Location("Des Moines", "KDSM", "America/Chicago")
+        lb = wc.Location("Providence", "KPVD", "America/New_York")
+        a = wc.DailySummary(70.0, 50.0, 50.0, 50.0, "Chance Showers And Thunderstorms", 24)
+        b = wc.DailySummary(70.0, 50.0, 50.0, 50.0, "Clear", 24)
+        cond_row = wc.build_ansi_table(la, lb, a, b, fav=wc.decide_favorability(a, b, 60.0, "high")).split("\n")[-1]
+        self.assertNotIn("Thunderstorms", cond_row)
+
     def test_handles_na(self):
         la = wc.Location("A", "K1", "America/Chicago")
         lb = wc.Location("B", "K2", "America/New_York")
