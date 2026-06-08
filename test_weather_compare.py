@@ -446,5 +446,39 @@ class TestNetworkWrappers(unittest.TestCase):
         self.assertEqual(captured["body"], {"embeds": []})
 
 
+class TestLoadConfig(unittest.TestCase):
+    def test_requires_webhook(self):
+        with self.assertRaises(SystemExit):
+            wc.load_config({})
+
+    def test_defaults(self):
+        cfg = wc.load_config({"DISCORD_WEBHOOK_URL": "http://hook"})
+        self.assertEqual(cfg.webhook_url, "http://hook")
+        self.assertEqual(cfg.loc_a.name, "Des Moines")
+        self.assertEqual(cfg.loc_a.station, "KDSM")
+        self.assertEqual(cfg.loc_a.tz, "America/Chicago")
+        self.assertEqual(cfg.loc_b.station, "KPVD")
+        self.assertEqual(cfg.temp_basis, "high")
+        self.assertEqual(cfg.target_min, 30.0)
+        self.assertEqual(cfg.target_max, 75.0)
+        self.assertTrue(cfg.ai_enabled)
+        self.assertIsNone(cfg.anthropic_api_key)
+        self.assertEqual(cfg.ai_model, "claude-haiku-4-5")
+        self.assertEqual(cfg.data_dir, "./data")
+
+    def test_overrides_and_bool_parsing(self):
+        cfg = wc.load_config({
+            "DISCORD_WEBHOOK_URL": "http://hook",
+            "LOC_A_NAME": "Austin", "LOC_A_STATION": "KAUS", "LOC_A_TZ": "America/Chicago",
+            "AI_ENABLED": "false", "TARGET_MIN": "25", "TROUGH_DOY": "15",
+            "ANTHROPIC_API_KEY": "sk-x", "RECAP_DATE": "2026-06-06",
+        })
+        self.assertEqual(cfg.loc_a.name, "Austin")
+        self.assertFalse(cfg.ai_enabled)
+        self.assertEqual(cfg.target_min, 25.0)
+        self.assertEqual(cfg.trough_doy, 15)
+        self.assertEqual(cfg.recap_date, "2026-06-06")
+
+
 if __name__ == "__main__":
     unittest.main()

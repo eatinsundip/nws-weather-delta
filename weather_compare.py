@@ -440,3 +440,36 @@ def fetch_observations(station: str, start_iso: str, end_iso: str,
 def post_discord(webhook_url: str, payload: dict,
                  post_json: Callable = http_post_json) -> None:
     post_json(webhook_url, {"content-type": "application/json"}, payload)
+
+
+def _bool(value: Optional[str], default: bool = True) -> bool:
+    if value is None:
+        return default
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+
+def load_config(env: dict) -> Config:
+    webhook = env.get("DISCORD_WEBHOOK_URL")
+    if not webhook:
+        raise SystemExit("DISCORD_WEBHOOK_URL is required")
+    loc_a = Location(env.get("LOC_A_NAME", "Des Moines"),
+                     env.get("LOC_A_STATION", "KDSM"),
+                     env.get("LOC_A_TZ", "America/Chicago"))
+    loc_b = Location(env.get("LOC_B_NAME", "Providence"),
+                     env.get("LOC_B_STATION", "KPVD"),
+                     env.get("LOC_B_TZ", "America/New_York"))
+    return Config(
+        webhook_url=webhook,
+        loc_a=loc_a,
+        loc_b=loc_b,
+        user_agent=env.get("NWS_USER_AGENT", "weather-compare (claude@ccaves.net)"),
+        temp_basis=env.get("TEMP_BASIS", "high"),
+        target_min=float(env.get("TARGET_MIN", "30")),
+        target_max=float(env.get("TARGET_MAX", "75")),
+        trough_doy=int(env.get("TROUGH_DOY", "20")),
+        ai_enabled=_bool(env.get("AI_ENABLED"), True),
+        anthropic_api_key=env.get("ANTHROPIC_API_KEY"),
+        ai_model=env.get("AI_MODEL", "claude-haiku-4-5"),
+        data_dir=env.get("DATA_DIR", "./data"),
+        recap_date=env.get("RECAP_DATE"),
+    )
