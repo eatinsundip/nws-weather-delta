@@ -171,8 +171,20 @@ class TestTemplatedSummary(unittest.TestCase):
         text = wc.templated_summary(la, lb, a, b, fav)
         self.assertIn("Des Moines", text)
         self.assertIn("7°F", text)
+        # warmer city (DSM) differs from target-closer city (PVD): phrase them distinctly
+        self.assertIn("Providence sat closer", text)
         self.assertIn("less humid", text)
         self.assertIn("Overall", text)
+
+    def test_warmer_city_also_closest_to_target(self):
+        la = wc.Location("A", "K1", "America/Chicago")
+        lb = wc.Location("B", "K2", "America/New_York")
+        # A high 70 (1 from target 69), B high 60 (9 away): A is warmer AND closer
+        a = wc.DailySummary(70.0, 50.0, 50.0, 50.0, "Clear", 24)
+        b = wc.DailySummary(60.0, 40.0, 50.0, 50.0, "Clear", 24)
+        fav = wc.decide_favorability(a, b, 69.0, "high")
+        self.assertEqual(fav.temp, "A")
+        self.assertIn("warmer and closer", wc.templated_summary(la, lb, a, b, fav))
 
     def test_handles_missing_values(self):
         la = wc.Location("A", "K1", "America/Chicago")

@@ -176,11 +176,17 @@ def templated_summary(loc_a: Location, loc_b: Location, a: DailySummary,
     parts = []
     if a.high_f is not None and b.high_f is not None and a.high_f != b.high_f:
         warmer = loc_a.name if a.high_f > b.high_f else loc_b.name
-        closer = loc_a.name if fav.temp == "A" else loc_b.name if fav.temp == "B" else "neither"
-        parts.append(
-            f"{warmer} was {abs(a.high_f - b.high_f):.0f}°F warmer "
-            f"(closer to the ~{fav.target_f:.0f}°F seasonal target: {closer})"
-        )
+        closer = loc_a.name if fav.temp == "A" else loc_b.name if fav.temp == "B" else None
+        diff = abs(a.high_f - b.high_f)
+        target = fav.target_f
+        if closer is None:
+            parts.append(f"{warmer} was {diff:.0f}°F warmer")
+        elif closer == warmer:
+            parts.append(f"{warmer} was {diff:.0f}°F warmer and closer to the ~{target:.0f}°F seasonal target")
+        else:
+            parts.append(
+                f"{warmer} was {diff:.0f}°F warmer, though {closer} sat closer to the ~{target:.0f}°F seasonal target"
+            )
     if a.humidity_pct is not None and b.humidity_pct is not None and a.humidity_pct != b.humidity_pct:
         drier = loc_a.name if a.humidity_pct < b.humidity_pct else loc_b.name
         parts.append(f"{drier} was {abs(a.humidity_pct - b.humidity_pct):.0f}% less humid")
@@ -311,16 +317,16 @@ def read_scoreboard(path: str, year: int) -> Scoreboard:
             for r in csv.DictReader(f):
                 if not r.get("date", "").startswith(prefix):
                     continue
-                w = r["overall_winner"]
+                w = r.get("overall_winner")
                 a += w == "A"
                 b += w == "B"
                 t += w == "tie"
-                at += r["temp_winner"] == "A"
-                bt += r["temp_winner"] == "B"
-                ah += r["humidity_winner"] == "A"
-                bh += r["humidity_winner"] == "B"
-                ac += r["cloud_winner"] == "A"
-                bc += r["cloud_winner"] == "B"
+                at += r.get("temp_winner") == "A"
+                bt += r.get("temp_winner") == "B"
+                ah += r.get("humidity_winner") == "A"
+                bh += r.get("humidity_winner") == "B"
+                ac += r.get("cloud_winner") == "A"
+                bc += r.get("cloud_winner") == "B"
     return Scoreboard(a, b, t, at, bt, ah, bh, ac, bc)
 
 
@@ -335,10 +341,6 @@ def _colorize(text: str, this_side: str, winner: str) -> str:
     if winner in ("A", "B"):  # there is a winner and it's the other side
         return f"{RED}{text}{RESET}"
     return text  # tie or None -> no color
-
-
-def _val(v: Optional[float], unit: str) -> str:
-    return "n/a" if v is None else f"{v:.0f}{unit}"
 
 
 def build_ansi_table(loc_a: Location, loc_b: Location, a: DailySummary,
@@ -359,13 +361,13 @@ def build_ansi_table(loc_a: Location, loc_b: Location, a: DailySummary,
     header = f"{''.ljust(label_w)}{loc_a.name[:col_w].rjust(col_w)}{loc_b.name[:col_w].rjust(col_w)}"
     lines = [
         header,
-        row("High", _val(a.high_f, "°F"), _val(b.high_f, "°F"),
+        row("High", _fmt(a.high_f, "°F"), _fmt(b.high_f, "°F"),
             diff(a.high_f, b.high_f, "°F"), fav.temp),
-        row("Low", _val(a.low_f, "°F"), _val(b.low_f, "°F"),
+        row("Low", _fmt(a.low_f, "°F"), _fmt(b.low_f, "°F"),
             diff(a.low_f, b.low_f, "°F"), None),
-        row("Humidity", _val(a.humidity_pct, "%"), _val(b.humidity_pct, "%"),
+        row("Humidity", _fmt(a.humidity_pct, "%"), _fmt(b.humidity_pct, "%"),
             diff(a.humidity_pct, b.humidity_pct, "%"), fav.humidity),
-        row("Cloud", _val(a.cloud_pct, "%"), _val(b.cloud_pct, "%"),
+        row("Cloud", _fmt(a.cloud_pct, "%"), _fmt(b.cloud_pct, "%"),
             diff(a.cloud_pct, b.cloud_pct, "%"), fav.cloud),
         row("Conditions", (a.conditions or "n/a"), (b.conditions or "n/a"), "", None),
     ]
