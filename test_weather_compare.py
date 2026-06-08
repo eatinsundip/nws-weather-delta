@@ -402,8 +402,9 @@ class TestHttp(unittest.TestCase):
         def fake_urlopen(req, timeout=None):
             raise urllib.error.HTTPError("http://x", 404, "nf", {}, None)
 
-        with self.assertRaises(urllib.error.HTTPError):
+        with self.assertRaises(urllib.error.HTTPError) as ctx:
             wc.http_request_json("http://x", {}, urlopen=fake_urlopen, sleep=lambda *_: None)
+        ctx.exception.close()  # HTTPError holds a temp-file handle; close to avoid ResourceWarning
 
     def test_empty_body_returns_none(self):
         def fake_urlopen(req, timeout=None):
@@ -411,6 +412,10 @@ class TestHttp(unittest.TestCase):
 
         out = wc.http_request_json("http://x", {}, urlopen=fake_urlopen, sleep=lambda *_: None)
         self.assertIsNone(out)
+
+    def test_invalid_retries_raises(self):
+        with self.assertRaises(ValueError):
+            wc.http_request_json("http://x", {}, retries=0)
 
 
 class TestNetworkWrappers(unittest.TestCase):

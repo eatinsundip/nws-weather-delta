@@ -400,6 +400,8 @@ def http_request_json(url: str, headers: dict, data: Optional[dict] = None,
                       method: str = "GET", timeout: float = 15.0, retries: int = 3,
                       backoff: float = 2.0, urlopen=urllib.request.urlopen,
                       sleep=_time.sleep):
+    if retries < 1:
+        raise ValueError("retries must be >= 1")
     body = json.dumps(data).encode() if data is not None else None
     last_exc = None
     for attempt in range(retries):
