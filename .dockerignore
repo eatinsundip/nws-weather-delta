@@ -1,0 +1,11 @@
+.git/
+data/
+__pycache__/
+*.pyc
+.pytest_cache/
+docs/
+test_weather_compare.py
+.env
+.env.example
+unraid/
+README.md
