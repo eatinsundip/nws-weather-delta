@@ -48,6 +48,32 @@ RECAP_DATE=2026-06-06 DISCORD_WEBHOOK_URL="..." python3 weather_compare.py
    Because each city's "yesterday" is computed in its own timezone, run it after
    the later city's local midnight — early morning Eastern is safe for both.
 
+## Docker / Unraid Community Applications (self-scheduling)
+
+The container runs continuously and posts once per day at `POST_TIME` (interpreted
+in City A's timezone) — no User Script or host Python needed.
+
+```bash
+docker run -d --name nws-weather-delta --restart unless-stopped \
+  -e DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..." \
+  -e POST_TIME="07:00" \
+  -e ANTHROPIC_API_KEY="" \
+  -v /mnt/user/appdata/weather-compare:/data \
+  ghcr.io/eatinsundip/nws-weather-delta:latest
+```
+
+`RUN_MODE=once` (instead of the default `schedule`) makes it run a single comparison
+and exit — handy for a manual test:
+
+```bash
+docker run --rm -e RUN_MODE=once -e RECAP_DATE=2026-06-06 \
+  -e DISCORD_WEBHOOK_URL="..." -v /mnt/user/appdata/weather-compare:/data \
+  ghcr.io/eatinsundip/nws-weather-delta:latest
+```
+
+On Unraid, the template at `unraid/nws-weather-delta.xml` exposes all of this as UI
+fields (Docker tab → Add Container → template).
+
 ## How the comparison works
 
 - **Temp:** the city whose high (or daily average, via `TEMP_BASIS=average`) is

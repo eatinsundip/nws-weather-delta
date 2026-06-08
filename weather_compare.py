@@ -519,10 +519,39 @@ def run(config: Config, today: date, get_json: Callable = http_get_json,
     return embed
 
 
+def _seconds_until(now: datetime, post_time: str, tz: ZoneInfo) -> float:
+    hh, mm = (int(x) for x in post_time.split(":"))
+    local_now = now.astimezone(tz)
+    target = local_now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+    if target <= local_now:
+        target += timedelta(days=1)
+    return (target - local_now).total_seconds()
+
+
+def serve(config: Config, post_time: str, sleep=_time.sleep, now_fn=None,
+          get_json: Callable = http_get_json, post_json: Callable = http_post_json) -> None:
+    tz = ZoneInfo(config.loc_a.tz)
+    if now_fn is None:
+        now_fn = lambda: datetime.now(tz)  # noqa: E731
+    log.info("Scheduler started: daily post at %s (%s)", post_time, config.loc_a.tz)
+    while True:
+        secs = _seconds_until(now_fn(), post_time, tz)
+        log.info("Next run in %.0f min", secs / 60)
+        sleep(secs)
+        try:
+            run(config, now_fn().date(), get_json=get_json, post_json=post_json)
+        except Exception:
+            log.exception("Scheduled run failed; continuing to next day")
+        sleep(60)  # step past the trigger minute so we don't double-fire
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     config = load_config(os.environ)
+    if os.environ.get("RUN_MODE", "once").strip().lower() == "schedule":
+        serve(config, os.environ.get("POST_TIME", "07:00"))
+        return
     today = datetime.now(ZoneInfo(config.loc_a.tz)).date()
     try:
         run(config, today)

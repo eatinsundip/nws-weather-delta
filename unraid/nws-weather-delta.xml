@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>nws-weather-delta</Name>
+  <Repository>ghcr.io/eatinsundip/nws-weather-delta:latest</Repository>
+  <Registry>https://github.com/eatinsundip/nws-weather-delta/pkgs/container/nws-weather-delta</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/eatinsundip/nws-weather-delta/issues</Support>
+  <Project>https://github.com/eatinsundip/nws-weather-delta</Project>
+  <Overview>Posts a daily Discord recap comparing yesterday's observed NWS weather for two cities (default Des Moines &amp; Providence): high/low temp, humidity, and cloud cover, with color-coded deltas, an optional Claude-generated summary, and a year-to-date scoreboard. Self-scheduling container that fires once per day at POST_TIME (interpreted in City A's timezone). Stdlib-only; the only state is a CSV under /data.</Overview>
+  <Category>Tools: HomeAutomation:</Category>
+  <WebUI/>
+  <TemplateURL/>
+  <Icon/>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Description>Daily two-city NWS weather comparison posted to a Discord channel via webhook. Color-coded favorability against a seasonal comfort-target curve, optional Claude summary with templated fallback, CSV-backed year-to-date scoreboard.</Description>
+  <Config Name="Discord Webhook URL" Target="DISCORD_WEBHOOK_URL" Default="" Mode="" Description="Discord webhook the recap is posted to (required)." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Post Time (HH:MM)" Target="POST_TIME" Default="07:00" Mode="" Description="Local time of day to post, in City A's timezone. Use an early-morning time so both cities have a complete prior day." Type="Variable" Display="always" Required="true" Mask="false">07:00</Config>
+  <Config Name="Appdata (history.csv)" Target="/data" Default="/mnt/user/appdata/weather-compare" Mode="rw" Description="Where the year-to-date history CSV is stored." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/weather-compare</Config>
+  <Config Name="AI Summary Enabled" Target="AI_ENABLED" Default="true" Mode="" Description="If true and an API key is set, use a Claude-generated summary; otherwise a templated one." Type="Variable" Display="always" Required="false" Mask="false">true</Config>
+  <Config Name="Anthropic API Key" Target="ANTHROPIC_API_KEY" Default="" Mode="" Description="Optional. Set to enable the AI summary (claude-haiku-4-5 by default). Leave blank for the templated summary." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="AI Model" Target="AI_MODEL" Default="claude-haiku-4-5" Mode="" Description="Anthropic model id for the summary." Type="Variable" Display="advanced" Required="false" Mask="false">claude-haiku-4-5</Config>
+  <Config Name="City A Name" Target="LOC_A_NAME" Default="Des Moines" Mode="" Description="Display name for the first city." Type="Variable" Display="advanced" Required="false" Mask="false">Des Moines</Config>
+  <Config Name="City A Station" Target="LOC_A_STATION" Default="KDSM" Mode="" Description="NWS station id (e.g. KDSM)." Type="Variable" Display="advanced" Required="false" Mask="false">KDSM</Config>
+  <Config Name="City A Timezone" Target="LOC_A_TZ" Default="America/Chicago" Mode="" Description="IANA timezone for City A; also used to interpret POST_TIME." Type="Variable" Display="advanced" Required="false" Mask="false">America/Chicago</Config>
+  <Config Name="City B Name" Target="LOC_B_NAME" Default="Providence" Mode="" Description="Display name for the second city." Type="Variable" Display="advanced" Required="false" Mask="false">Providence</Config>
+  <Config Name="City B Station" Target="LOC_B_STATION" Default="KPVD" Mode="" Description="NWS station id (e.g. KPVD)." Type="Variable" Display="advanced" Required="false" Mask="false">KPVD</Config>
+  <Config Name="City B Timezone" Target="LOC_B_TZ" Default="America/New_York" Mode="" Description="IANA timezone for City B." Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
+  <Config Name="NWS User-Agent" Target="NWS_USER_AGENT" Default="weather-compare (claude@ccaves.net)" Mode="" Description="NWS requires a User-Agent with contact info." Type="Variable" Display="advanced" Required="false" Mask="false">weather-compare (claude@ccaves.net)</Config>
+  <Config Name="Temp Basis" Target="TEMP_BASIS" Default="high" Mode="" Description="Which temperature is compared to the seasonal target: high or average." Type="Variable" Display="advanced" Required="false" Mask="false">high</Config>
+  <Config Name="Target Min (F)" Target="TARGET_MIN" Default="30" Mode="" Description="Coldest seasonal comfort target (mid-winter)." Type="Variable" Display="advanced" Required="false" Mask="false">30</Config>
+  <Config Name="Target Max (F)" Target="TARGET_MAX" Default="75" Mode="" Description="Warmest seasonal comfort target (mid-summer)." Type="Variable" Display="advanced" Required="false" Mask="false">75</Config>
+  <Config Name="Trough Day-of-Year" Target="TROUGH_DOY" Default="20" Mode="" Description="Day-of-year of the coldest target (~Jan 20)." Type="Variable" Display="advanced" Required="false" Mask="false">20</Config>
+</Container>

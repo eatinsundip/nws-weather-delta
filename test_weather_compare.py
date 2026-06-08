@@ -4,7 +4,8 @@ import tempfile
 import unittest
 import urllib.error
 import weather_compare as wc
-from datetime import date as _date
+from datetime import date as _date, datetime
+from zoneinfo import ZoneInfo
 
 
 class TestScaffold(unittest.TestCase):
@@ -553,6 +554,50 @@ class TestRun(unittest.TestCase):
             with open(os.path.join(d, "history.csv"), newline="") as f:
                 rows = list(csv.DictReader(f))
             self.assertEqual(rows[0]["date"], "2026-06-06")
+
+
+class TestScheduler(unittest.TestCase):
+    def _tz(self):
+        return ZoneInfo("America/Chicago")
+
+    def test_seconds_until_later_today(self):
+        now = datetime(2026, 6, 8, 6, 0, tzinfo=self._tz())
+        self.assertEqual(wc._seconds_until(now, "07:00", self._tz()), 3600)
+
+    def test_seconds_until_tomorrow_when_passed(self):
+        now = datetime(2026, 6, 8, 8, 0, tzinfo=self._tz())
+        self.assertEqual(wc._seconds_until(now, "07:00", self._tz()), 23 * 3600)
+
+    def test_seconds_until_exact_time_rolls_to_next_day(self):
+        now = datetime(2026, 6, 8, 7, 0, tzinfo=self._tz())
+        self.assertEqual(wc._seconds_until(now, "07:00", self._tz()), 24 * 3600)
+
+    def test_serve_runs_one_comparison_per_cycle(self):
+        cfg = wc.load_config({"DISCORD_WEBHOOK_URL": "http://hook",
+                              "DATA_DIR": tempfile.mkdtemp(), "AI_ENABLED": "false"})
+        posts = []
+
+        def fake_get(url, headers):
+            return {"features": [{"properties": {"temperature": {"value": 20.0},
+                    "relativeHumidity": {"value": 50.0}, "cloudLayers": [],
+                    "textDescription": "Clear"}}]}
+
+        def fake_post(url, headers, body):
+            posts.append(url)
+            return None
+
+        sleeps = {"n": 0}
+
+        def fake_sleep(_secs):
+            sleeps["n"] += 1
+            if sleeps["n"] >= 2:  # after sleep(secs) + run + sleep(60), stop the loop
+                raise KeyboardInterrupt
+
+        fixed_now = datetime(2026, 6, 8, 6, 0, tzinfo=self._tz())
+        with self.assertRaises(KeyboardInterrupt):
+            wc.serve(cfg, "07:00", sleep=fake_sleep, now_fn=lambda: fixed_now,
+                     get_json=fake_get, post_json=fake_post)
+        self.assertEqual(len(posts), 1)
 
 
 if __name__ == "__main__":
