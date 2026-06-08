@@ -186,6 +186,18 @@ class TestTemplatedSummary(unittest.TestCase):
         self.assertEqual(fav.temp, "A")
         self.assertIn("warmer and closer", wc.templated_summary(la, lb, a, b, fav))
 
+    def test_near_equal_values_omit_zero_clauses(self):
+        la = wc.Location("Des Moines", "KDSM", "America/Chicago")
+        lb = wc.Location("Providence", "KPVD", "America/New_York")
+        # highs 88.0/87.8 and humidity 66.2/66.5 round equal -> those clauses are dropped
+        a = wc.DailySummary(88.0, 66.0, 66.2, 19.3, "Clear", 24)
+        b = wc.DailySummary(87.8, 60.8, 66.5, 22.4, "Clear", 24)
+        fav = wc.decide_favorability(a, b, 68.4, "high")
+        text = wc.templated_summary(la, lb, a, b, fav)
+        self.assertNotIn("0°F warmer", text)
+        self.assertNotIn("0% less humid", text)
+        self.assertIn("clearer", text)  # cloud 19 vs 22 still differs
+
     def test_handles_missing_values(self):
         la = wc.Location("A", "K1", "America/Chicago")
         lb = wc.Location("B", "K2", "America/New_York")
@@ -451,17 +463,21 @@ class TestNetworkWrappers(unittest.TestCase):
         self.assertIn("start=2026-06-06T05:00:00Z", captured["url"])
         self.assertEqual(captured["headers"]["User-Agent"], "ua")
 
-    def test_post_discord_calls_transport(self):
+    def test_post_discord_sets_useragent_and_calls_transport(self):
         captured = {}
 
         def fake_post(url, headers, body):
             captured["url"] = url
+            captured["headers"] = headers
             captured["body"] = body
             return None
 
-        wc.post_discord("http://hook", {"embeds": []}, post_json=fake_post)
+        wc.post_discord("http://hook", {"embeds": []}, "ua/1.0", post_json=fake_post)
         self.assertEqual(captured["url"], "http://hook")
         self.assertEqual(captured["body"], {"embeds": []})
+        # Discord rejects the default urllib UA with 403 -> a User-Agent must be sent
+        self.assertEqual(captured["headers"]["User-Agent"], "ua/1.0")
+        self.assertEqual(captured["headers"]["content-type"], "application/json")
 
 
 class TestLoadConfig(unittest.TestCase):

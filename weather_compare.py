@@ -171,10 +171,16 @@ def decide_favorability(a: DailySummary, b: DailySummary, target_f: float,
     return Favorability(temp, humidity, cloud, overall, target_f)
 
 
+def _shows_diff(x: Optional[float], y: Optional[float]) -> bool:
+    # True only when both values exist and their rounded (displayed) forms differ,
+    # so the summary never claims a "0" difference.
+    return x is not None and y is not None and round(x) != round(y)
+
+
 def templated_summary(loc_a: Location, loc_b: Location, a: DailySummary,
                       b: DailySummary, fav: Favorability) -> str:
     parts = []
-    if a.high_f is not None and b.high_f is not None and a.high_f != b.high_f:
+    if _shows_diff(a.high_f, b.high_f):
         warmer = loc_a.name if a.high_f > b.high_f else loc_b.name
         closer = loc_a.name if fav.temp == "A" else loc_b.name if fav.temp == "B" else None
         diff = abs(a.high_f - b.high_f)
@@ -187,10 +193,10 @@ def templated_summary(loc_a: Location, loc_b: Location, a: DailySummary,
             parts.append(
                 f"{warmer} was {diff:.0f}°F warmer, though {closer} sat closer to the ~{target:.0f}°F seasonal target"
             )
-    if a.humidity_pct is not None and b.humidity_pct is not None and a.humidity_pct != b.humidity_pct:
+    if _shows_diff(a.humidity_pct, b.humidity_pct):
         drier = loc_a.name if a.humidity_pct < b.humidity_pct else loc_b.name
         parts.append(f"{drier} was {abs(a.humidity_pct - b.humidity_pct):.0f}% less humid")
-    if a.cloud_pct is not None and b.cloud_pct is not None and a.cloud_pct != b.cloud_pct:
+    if _shows_diff(a.cloud_pct, b.cloud_pct):
         clearer = loc_a.name if a.cloud_pct < b.cloud_pct else loc_b.name
         parts.append(f"{clearer} was clearer (by {abs(a.cloud_pct - b.cloud_pct):.0f}%)")
     if parts:
@@ -441,9 +447,11 @@ def fetch_observations(station: str, start_iso: str, end_iso: str,
     return [f["properties"] for f in features]
 
 
-def post_discord(webhook_url: str, payload: dict,
+def post_discord(webhook_url: str, payload: dict, user_agent: str,
                  post_json: Callable = http_post_json) -> None:
-    post_json(webhook_url, {"content-type": "application/json"}, payload)
+    # Discord's Cloudflare returns 403 for the default urllib User-Agent, so set one.
+    headers = {"content-type": "application/json", "User-Agent": user_agent}
+    post_json(webhook_url, headers, payload)
 
 
 def _bool(value: Optional[str], default: bool = True) -> bool:
@@ -505,7 +513,7 @@ def run(config: Config, today: date, get_json: Callable = http_get_json,
     sb = read_scoreboard(csv_path, recap.year)
 
     embed = build_embed(config.loc_a, config.loc_b, a, b, fav, summary_text, sb, recap)
-    post_discord(config.webhook_url, embed, post_json=post_json)
+    post_discord(config.webhook_url, embed, config.user_agent, post_json=post_json)
     log.info("Posted weather comparison for %s (overall winner: %s)",
              recap.isoformat(), fav.overall)
     return embed
